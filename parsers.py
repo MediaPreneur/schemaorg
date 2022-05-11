@@ -50,22 +50,22 @@ class ParseExampleFile :
 
     def process_example_id(self, m):
         self.egmeta["id"] = m.group(1)
-        logging.debug("Storing ID: %s" % self.egmeta["id"] )
+        logging.debug(f'Storing ID: {self.egmeta["id"]}')
         return ''
 
-    def parse (self, contents):
-        content = ""
+    def parse(self, contents):
         egid = re.compile("""#(\S+)\s+""")
-        for i in range(len(contents)):
-            content += contents[i]
-
+        content = "".join(contents[i] for i in range(len(contents)))
         lines = re.split('\n|\r', content)
         for line in lines:
             # Per-example sections begin with e.g.: 'TYPES: #music-2 Person, MusicComposition, Organization'
 
             if ((len(line) > 6) and line[:6] == "TYPES:"):
                 self.nextPart('TYPES:')
-                logging.debug("About to call api.Example.AddExample with terms: %s " % "".join( [" ; %s " % t.id for t in self.terms] ) )
+                logging.debug(
+                    f'About to call api.Example.AddExample with terms: {"".join([f" ; {t.id} " for t in self.terms])} '
+                )
+
                 api.Example.AddExample(self.terms, self.preMarkupStr, self.microdataStr, self.rdfaStr, self.jsonStr, self.egmeta)
                 self.initFields()
                 typelist = re.split(':', line)
@@ -76,7 +76,7 @@ class ParseExampleFile :
                 ttl = tdata.split(',')
                 for ttli in ttl:
                     ttli = re.sub(' ', '', ttli)
-                    logging.debug("TTLI: %s " % ttli); # danbri tmp
+                    logging.debug(f"TTLI: {ttli} ")
                     self.terms.append(api.Unit.GetUnit(ttli, True))
             else:
                 tokens = ["PRE-MARKUP:", "MICRODATA:", "RDFA:", "JSON:"]
@@ -91,7 +91,7 @@ class ParseExampleFile :
         api.Example.AddExample(self.terms, self.preMarkupStr, self.microdataStr, self.rdfaStr, self.jsonStr, self.egmeta) # should flush last one
         #logging.info("Final AddExample called with terms %s " % self.terms)
         for t in self.terms:
-            logging.debug("Adding %s" % "".join( [" ; %s " % t.id for t in self.terms] ) )
+            logging.debug(f'Adding {"".join([f" ; {t.id} " for t in self.terms])}')
 
 
 class UsageFileParser:
@@ -99,7 +99,7 @@ class UsageFileParser:
     def __init__ (self, webapp):
         self.webapp = webapp
 
-    def parse (self, contents):
+    def parse(self, contents):
         lines = contents.split('\n')
         for l in lines:
             parts = l.split('\t')
@@ -107,7 +107,7 @@ class UsageFileParser:
                 unitstr = parts[0].strip()
                 count = parts[1]
                 node = api.Unit.GetUnit(unitstr, False)
-                if (node == None):
+                if node is None:
                     logging.debug("'%s' stat. does not have a node" % unitstr)
                 else:
                     node.setUsage(count)
@@ -118,11 +118,11 @@ class RDFAParser :
     def __init__ (self, webapp):
         self.webapp = webapp
 
-    def parse (self, files, layer="core"):
+    def parse(self, files, layer="core"):
         self.items = {}
         root = []
         for i in range(len(files)):
-            logging.debug("RDFa parse schemas in %s " % files[i])
+            logging.debug(f"RDFa parse schemas in {files[i]} ")
             parser = ET.XMLParser(encoding="utf-8")
             tree = ET.parse(files[i], parser=parser)
             root.append(tree.getroot())
@@ -131,17 +131,18 @@ class RDFAParser :
             for e in range(len(pre)):
                 api.Unit.storePrefix(pre[e].get('prefix'))
 
-        for i in range(len(root)):
-              self.extractTriples(root[i], None, layer)
+        for item in root:
+            self.extractTriples(item, None, layer)
 
 
         return self.items.keys()
 
-    def stripID (self, str) :
-        if (len(str) > 16 and (str[:17] == 'http://schema.org')) :
-            return str[18:]
-        else:
-            return str
+    def stripID(self, str):
+        return (
+            str[18:]
+            if (len(str) > 16 and (str[:17] == 'http://schema.org'))
+            else str
+        )
 
     def extractTriples(self, elem, currentNode, layer="core"):
         typeof = elem.get('typeof')
@@ -151,8 +152,8 @@ class RDFAParser :
         text = elem.text
         if (property != None):
             if property == "rdf:type":
-              property = "typeOf" # some crude normalization, since we aren't a real rdfa parser.
-              logging.info("normalized rdf:type to typeOf internally. value is: %s" % href )
+                property = "typeOf" # some crude normalization, since we aren't a real rdfa parser.
+                logging.info(f"normalized rdf:type to typeOf internally. value is: {href}")
             property = api.Unit.GetUnit(self.stripID(property), True)
             if (href != None) :
                 href = api.Unit.GetUnit(self.stripID(href), True)
@@ -189,20 +190,16 @@ class MCFParser:
         parts = re.split(':', line)
         return parts[0]
 
-    def cleanValue (self, value) :
-        if (value.find('"') > -1):
-            parts = re.split('"', value)
-            return parts[1]
-        else:
+    def cleanValue(self, value):
+        if value.find('"') <= -1:
             return re.sub(' ', '', value)
+        parts = re.split('"', value)
+        return parts[1]
 
-    def extractValues (self, line):
+    def extractValues(self, line):
         parts = re.split(':', line)
         raw_values = re.split(',', parts[1])
-        values = []
-        for rv in raw_values:
-            values.append(self.cleanValue(rv))
-        return values
+        return [self.cleanValue(rv) for rv in raw_values]
 
     def parse (self, content):
         self.items = {}

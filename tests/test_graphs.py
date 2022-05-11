@@ -31,25 +31,25 @@ setInTestHarness(True)
 class SDOGraphSetupTestCase(unittest.TestCase):
 
   @classmethod
-  def parseRDFaFilesWithRDFLib(self):
-      """Parse data/*rdfa into a data object and an error object with rdflib.
+  def parseRDFaFilesWithRDFLib(cls):
+    """Parse data/*rdfa into a data object and an error object with rdflib.
       We glob so that work-in-progress schemas can be stored separately. For
       final publication, a single schema file is used. Note that this does 
       not yet load or test any extension schemas beneath data/ext/*."""
 
-      from rdflib import Graph
-      files = glob.glob("data/*.rdfa")
-      log.info("Found %s files via data/*rdfa." % len(files))
-      self.rdflib_errors = Graph()
-      self.rdflib_data = Graph()
-      for f in files:
-        log.info("Files to parse: %s" % f )
-        log.info("Parsing URL %s with rdflib RDFa parser. " % f)
-        self.rdflib_data.parse(f, format='rdfa', pgraph=self.rdflib_errors)
+    from rdflib import Graph
+    files = glob.glob("data/*.rdfa")
+    log.info(f"Found {len(files)} files via data/*rdfa.")
+    cls.rdflib_errors = Graph()
+    cls.rdflib_data = Graph()
+    for f in files:
+      log.info(f"Files to parse: {f}")
+      log.info(f"Parsing URL {f} with rdflib RDFa parser. ")
+      cls.rdflib_data.parse(f, format='rdfa', pgraph=cls.rdflib_errors)
         # log.info(self.rdflib_errors.serialize(format="nt"))
 
   @classmethod
-  def setUpClass(self):
+  def setUpClass(cls):
     log.info("Graph tests require rdflib.")
     import unittest
     try:
@@ -57,10 +57,10 @@ class SDOGraphSetupTestCase(unittest.TestCase):
       import rdflib
       from rdflib import Graph
     except Exception as e:
-      raise unittest.SkipTest("Need rdflib installed to do graph tests: %s" % e)
+      raise unittest.SkipTest(f"Need rdflib installed to do graph tests: {e}")
 
     read_schemas() # built-in parsers.
-    self.schemasInitialized = schemasInitialized
+    cls.schemasInitialized = schemasInitialized
     log.info("SDOGraphSetupTestCase reading schemas using built-in parsers.")
 
     log.info("Attempting to parse data/*rdfa with rdflib.")
@@ -70,19 +70,31 @@ class SDOGraphSetupTestCase(unittest.TestCase):
     self.assertEqual(self.schemasInitialized,True, "Schemas should be initialized during setup, so we can load them into a graph for testing.")
 
   def test_rdflib_happy(self):
-    self.assertEqual(len(self.rdflib_errors)==0, True, "rdflib should have zero errors. %s" % self.rdflib_errors.serialize(format="nt"))
+    self.assertEqual(
+        len(self.rdflib_errors) == 0,
+        True,
+        f'rdflib should have zero errors. {self.rdflib_errors.serialize(format="nt")}',
+    )
 
   # SPARQLResult http://rdflib.readthedocs.org/en/latest/apidocs/rdflib.plugins.sparql.html
   # "A list of dicts (solution mappings) is returned"
 
   def test_found_sixplus_inverseOf(self):
     inverseOf_results = self.rdflib_data.query("select ?x ?y where { ?x <http://schema.org/inverseOf> ?y }")
-    log.info("inverseOf result count: %s" % len(inverseOf_results ) )
-    self.assertEqual(len(inverseOf_results ) >= 6, True, "Six or more inverseOf expected. Found: %s " % len(inverseOf_results ) )
+    log.info(f"inverseOf result count: {len(inverseOf_results)}")
+    self.assertEqual(
+        len(inverseOf_results) >= 6,
+        True,
+        f"Six or more inverseOf expected. Found: {len(inverseOf_results)} ",
+    )
 
   def test_even_number_inverseOf(self):
-    inverseOf_results = self.rdflib_data.query("select ?x ?y where { ?x <http://schema.org/inverseOf> ?y }")    
-    self.assertEqual(len(inverseOf_results ) % 2 == 0, True, "Even number of inverseOf triples expected. Found: %s " % len(inverseOf_results ) )
+    inverseOf_results = self.rdflib_data.query("select ?x ?y where { ?x <http://schema.org/inverseOf> ?y }")
+    self.assertEqual(
+        len(inverseOf_results) % 2 == 0,
+        True,
+        f"Even number of inverseOf triples expected. Found: {len(inverseOf_results)} ",
+    )
 
   @unittest.expectedFailure # autos
   def test_needlessDomainIncludes(self):
@@ -100,11 +112,15 @@ class SDOGraphSetupTestCase(unittest.TestCase):
            "ORDER BY ?prop ")
     ndi1_results = self.rdflib_data.query(ndi1)
     if (len(ndi1_results)>0):
-        for row in ndi1_results:
-            warn = "WARNING property %s defining domain, %s, [which is subclassOf] %s unnecessarily" % (row["prop"],row["c1"],row["c2"])
-            warnings.append(warn)
-            log.info(warn + "\n")
-    self.assertEqual(len(ndi1_results), 0, "No subtype need redeclare a domainIncludes of its parents. Found: %s " % len(ndi1_results ) )
+      for row in ndi1_results:
+        warn = f'WARNING property {row["prop"]} defining domain, {row["c1"]}, [which is subclassOf] {row["c2"]} unnecessarily'
+        warnings.append(warn)
+        log.info(warn + "\n")
+    self.assertEqual(
+        len(ndi1_results),
+        0,
+        f"No subtype need redeclare a domainIncludes of its parents. Found: {len(ndi1_results)} ",
+    )
 
   @unittest.expectedFailure
   def test_needlessRangeIncludes(self):
@@ -123,11 +139,15 @@ class SDOGraphSetupTestCase(unittest.TestCase):
              "ORDER BY ?prop ")
     nri1_results = self.rdflib_data.query(nri1)
     if (len(nri1_results)>0):
-        for row in nri1_results:
-            warn = "WARNING property %s defining range, %s, [which is subclassOf] %s unnecessarily" % (row["prop"],row["c1"],row["c2"])
-            warnings.append(warn)
-            log.info(warn + "\n")
-    self.assertEqual(len(nri1_results), 0, "No subtype need redeclare a rangeIncludes of its parents. Found: %s" % len(nri1_results) )
+      for row in nri1_results:
+        warn = f'WARNING property {row["prop"]} defining range, {row["c1"]}, [which is subclassOf] {row["c2"]} unnecessarily'
+        warnings.append(warn)
+        log.info(warn + "\n")
+    self.assertEqual(
+        len(nri1_results),
+        0,
+        f"No subtype need redeclare a rangeIncludes of its parents. Found: {len(nri1_results)}",
+    )
     
 #  def test_supersededByAreLabelled(self):
 #    supersededByAreLabelled_results = self.rdflib_data.query("select ?x ?y ?z where { ?x <http://schema.org/supersededBy> ?y . ?y <http://schema.org/name> ?z }")
@@ -147,8 +167,12 @@ class SDOGraphSetupTestCase(unittest.TestCase):
                  ORDER BY ?prop ''')
     nri1_results = self.rdflib_data.query(nri1)
     for row in nri1_results:
-        log.info("Property %s invalid rangeIncludes value: %s\n" % (row["prop"],row["c1"]))      
-    self.assertEqual(len(nri1_results), 0, "RangeIncludes should define valid type. Found: %s" % len(nri1_results))
+        log.info("Property %s invalid rangeIncludes value: %s\n" % (row["prop"],row["c1"]))
+    self.assertEqual(
+        len(nri1_results),
+        0,
+        f"RangeIncludes should define valid type. Found: {len(nri1_results)}",
+    )
 
   def test_validDomainIncludes(self):
     nri1= ('''SELECT ?prop ?c1 
@@ -163,8 +187,12 @@ class SDOGraphSetupTestCase(unittest.TestCase):
                  ORDER BY ?prop ''')
     nri1_results = self.rdflib_data.query(nri1)
     for row in nri1_results:
-        log.info("Property %s invalid domainIncludes value: %s\n" % (row["prop"],row["c1"]))      
-    self.assertEqual(len(nri1_results), 0, "DomainIncludes should define valid type. Found: %s" % len(nri1_results))
+        log.info("Property %s invalid domainIncludes value: %s\n" % (row["prop"],row["c1"]))
+    self.assertEqual(
+        len(nri1_results),
+        0,
+        f"DomainIncludes should define valid type. Found: {len(nri1_results)}",
+    )
 
   # These are place-holders for more sophisticated SPARQL-expressed checks.
 
@@ -179,11 +207,11 @@ class SDOGraphSetupTestCase(unittest.TestCase):
     # self.assertEqual(len(ndi1_results), 0, "No domainIncludes or rangeIncludes value should lack a type. Found: %s " % len(ndi1_results ) )
 
 def tearDownModule():
-    global warnings
-    if len(warnings) > 0:
-        log.info("\nWarnings (%s):\n" % len(warnings))
-    for warn in warnings:
-        log.info("%s" % warn)
+  global warnings
+  if len(warnings) > 0:
+      log.info("\nWarnings (%s):\n" % len(warnings))
+  for warn in warnings:
+    log.info(f"{warn}")
 
 # TODO: Unwritten tests (from basics; easier here?)
 #

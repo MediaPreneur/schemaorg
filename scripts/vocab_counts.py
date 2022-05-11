@@ -3,22 +3,16 @@
 
 import sys
 
-def vocab_term (term) :
+def vocab_term(term):
     parts = term.split('/', 4)
     if (len(parts) < 4) :
-        return None 
-    domain = parts[2]
-    if (not (domain == "schema.org")) :
         return None
-    else :
-        return parts[3]
+    domain = parts[2]
+    return None if domain != "schema.org" else parts[3]
 
 counts = {}
-def addCount (term, count) :
-    if (term in counts) :
-        counts[term] = counts[term] + count
-    else:
-        counts[term] = count
+def addCount(term, count):
+    counts[term] = counts[term] + count if (term in counts) else count
         
 def bucket (vt, count) :
     if (vt != None):
